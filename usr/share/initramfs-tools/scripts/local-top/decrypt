@@ -1,0 +1,59 @@
+#!/bin/sh
+
+PREREQ=""
+
+prereqs()
+{
+	echo "$PREREQ"
+}
+
+case $1 in
+# get pre-requisites
+prereqs)
+	prereqs
+	exit 0
+	;;
+esac
+
+. /scripts/functions
+configure_networking
+
+export HOME=/root/
+
+IPLIST="keyserver.local.domain [KEYSERVER n] [KEYSERVER n+1] [KEYSERVER n+2]"
+
+
+subproc()
+{
+	# password abfrage ausschalten
+	export DROPBEAR_PASSWORD="no"
+
+	# warte bis die fifo angelegt wurde
+	while ! [ -p /lib/cryptsetup/passfifo ]
+	do
+		sleep 1
+	done
+
+	# solange cryptsetup läuft, versuchen das password bereitzustellen
+	while pidof cryptroot
+	do
+		# wenn cryptsetup läuft aber askpass noch nicht
+		# gestartet wurde, warte ab
+		pidof askpass && decrypt;
+		sleep 1
+	done
+}
+
+decrypt()
+{
+	for ip in $IPLIST
+	do
+		pass=$(/bin/dbclient -i /root/.ssh/id_dropbear -I 3 `hostname`@${ip} 'cat key.txt')
+		if ! [ -z $pass ]; then
+			echo -n $pass > /lib/cryptsetup/passfifo
+			break;
+		fi;
+	done
+}
+
+subproc > /dev/null &

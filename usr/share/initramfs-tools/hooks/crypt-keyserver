@@ -1,0 +1,41 @@
+#!/bin/sh
+
+PREREQ=""
+
+prereqs()
+{
+	echo "$PREREQ"
+}
+
+case "$1" in
+prereqs)
+	 prereqs
+	 exit 0
+	;;
+esac
+
+. /usr/share/initramfs-tools/hook-functions
+
+# fix dns problems
+cp /lib/x86_64-linux-gnu/libnss_* /lib/x86_64-linux-gnu/libresolv.so.2 /lib/x86_64-linux-gnu/libc.so.6 /lib/x86_64-linux-gnu/ld-2.24.so  "${DESTDIR}/lib/x86_64-linux-gnu"
+
+# copy ssh client
+copy_exec /usr/bin/dbclient /bin
+
+# make .ssh root
+mkdir -p "$DESTDIR/root/.ssh"
+
+# Copy private key for keyserver login
+cp -p /root/id_dropbear "$DESTDIR/root/.ssh/"
+
+# copy ssh host keys of keyservers to known_hosts
+echo "keyserver.local.domain ecdsa-sha2-nistp256 [SSH IDENT]" >> "$DESTDIR/root/.ssh/known_hosts"
+echo "[KEYSERVER n] ecdsa-sha2-nistp256 [SSH IDENT]" >> "$DESTDIR/root/.ssh/known_hosts"
+echo "[KEYSERVER n+1] ecdsa-sha2-nistp256 [SSH IDENT]" >> "$DESTDIR/root/.ssh/known_hosts"
+echo "[KEYSERVER n+2] ecdsa-sha2-nistp256 [SSH IDENT]" >> "$DESTDIR/root/.ssh/known_hosts"
+
+# configure nameservers
+echo "nameserver x.x.x.x
+nameserver x.x.x.x
+nameserver x.x.x.x
+nameserver x.x.x.x" > "${DESTDIR}/etc/resolv.conf"
